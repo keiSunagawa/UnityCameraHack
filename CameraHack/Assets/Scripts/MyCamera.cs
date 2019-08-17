@@ -1,13 +1,15 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using KUtil;
+using Positioning;
 
-public class MyCamera : MonoBehaviour
+public class MyCamera : MonoBehaviour, PositionCalculater
 {
     private WebCamTexture webCamTexture = null;
-    Texture2D texture;
     Color32[] colors = null;
+    FaceSearcher faces = new MockFaceSearcher();
 
     // Start is called before the first frame update
     IEnumerator Start()
@@ -18,8 +20,8 @@ public class MyCamera : MonoBehaviour
         switch (getDevice(canUseCamera)){
             case Right<string, WebCamDevice> r:
                 WebCamDevice userCameraDevice = r.val;
-                webCamTexture = new WebCamTexture(userCameraDevice.name, 1000, 1000);
-                GetComponent<Renderer> ().material.mainTexture = webCamTexture;
+                webCamTexture = new WebCamTexture(userCameraDevice.name, 1280, 720);
+                GetComponent<Renderer>().material.mainTexture = webCamTexture;
                 webCamTexture.Play();
                 break;
             case Left<string, WebCamDevice> l:
@@ -32,7 +34,15 @@ public class MyCamera : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        
+        if(webCamTexture != null) {
+            colors = new Color32[webCamTexture.width * webCamTexture.height];
+            webCamTexture.GetPixels32(colors);
+            var pp = faces.search(colors);
+            var p = calc(pp);
+            var sp = GameObject.Find("Sphere");
+            var inst = sp.GetComponent<SpherePosition>();
+            inst.setPosition(p);
+        }
     }
 
     private Either<string, WebCamDevice> getDevice(bool canUseCamera) {
@@ -47,5 +57,32 @@ public class MyCamera : MonoBehaviour
         }
 
         return new Right<string, WebCamDevice>(WebCamTexture.devices[ 0 ]);
+    }
+
+    public Position calc(ParPosition par) {
+        Position p;
+
+        var bx = GetComponent<Renderer>().bounds.size.x;
+        var by = GetComponent<Renderer>().bounds.size.y;
+
+        p.x = (bx * (par.xp / 100.0f)) - (bx / 2);
+        p.y = (by * (par.yp / 100.0f)) - (by / 2);
+        return p;
+    }
+}
+
+class MockFaceSearcher : FaceSearcher {
+    // 画像解析処理を作るのはめんどくさそうなので特に意味はない適当な数値を返す
+    public ParPosition search(Color32[] cs) {
+        int xtmp = 0;
+        int ytmp = 0;
+        foreach (Color32 c in cs) {
+            xtmp = xtmp + c.b + c.g - c.r;
+            ytmp = ytmp + c.r + c.g - c.b;
+        }
+        ParPosition pp;
+        pp.xp = Math.Abs(xtmp) % 100;
+        pp.yp = Math.Abs(ytmp) % 100;
+        return pp;
     }
 }

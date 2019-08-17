@@ -20,10 +20,10 @@ namespace Positioning {
     }
     public interface FaceSearcher {
         // 顔の位置(中心座標)を取得
-        ParPosition search();
+        ParPosition search(Color32[] cs);
     }
     public interface PositionCalculater {
+        // 位置割合からUniry object上ので位置を算出
         Position calc(ParPosition par);
-
     }
 }
